@@ -8,14 +8,8 @@
 import os
 import sys
 
-# 获取当前脚本的目录（train 文件夹）
-current_dir = os.path.dirname(os.path.abspath(__file__))
-
-# 获取上一级目录（D:\program\LLIE\DEN）
-parent_dir = os.path.abspath(os.path.join(current_dir, ".."))
-
 # 添加到 sys.path
-sys.path.append(parent_dir)
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")))
 
 import json
 import time
@@ -58,8 +52,11 @@ transform = transforms.Compose([
 def parse_args():
     parser = argparse.ArgumentParser(description="Train EIN model")
     parser.add_argument('--config', type=str, default='../train/config.json', help='Path to config file')
-    parser.add_argument('--checkpoint', type=str, default='../checkpoints/EdgeNet/EIN_wde_wBDCN_op_ep150.pth',
+    parser.add_argument('--checkpoint', type=str, default='../checkpoints/EdgeNet/EIN150.pth',
                         help='Path to save checkpoint')
+    parser.add_argument('--train_image', type=str, default='../datasets/LOL-v2/Real_captured/Train/Low', help='Path to training images')
+    parser.add_argument('--train_edge', type=str, default='../datasets/LOL-v2/Real_captured/Train/Normal_edge', help='Path to training edge maps')
+
     return parser.parse_args()
 
 
@@ -94,55 +91,18 @@ class EdgeDataset(Dataset):
 
         return imgs_image, edge_maps_image, imgs_filename
 
-
-'''
-dataset_paths = {
-    'train_image': '../datasets/BIPEDv2/Train/imgs_aug',
-    'train_edge': '../datasets/BIPEDv2/Train/edges_aug',
-    'test_image': '../datasets/BIPEDv2/Test/imgs_aug',
-    'test_edge': '../datasets/BIPEDv2/Test/edges_aug'
-}
-'''
-
-"""
-dataset_paths = {
-    'train_image': '../datasets/BIPEDv2/Train/imgs_degraded',
-    'train_edge': '../datasets/BIPEDv2/Train/edges',
-    'test_image': '../datasets/BIPEDv2/Test/imgs_degraded',
-    'test_edge': '../datasets/BIPEDv2/Test/edges'
-}
-"""
-
-"""
-dataset_paths = {
-    'train_image': '../datasets/LOL-v2/Real_captured/Train/Low',
-    'train_edge': '../datasets/LOL-v2/Real_captured/Train/Normal_edge',
-    'test_image': '../datasets/LOL-v2/Real_captured/Test/Low',
-    'test_edge': '../datasets/LOL-v2/Real_captured/Test/Normal_edge'
-}
-"""
-
-
-dataset_paths = {
-    'train_image': '../datasets/LOL-v2/Real_captured/Train/Low_aug',
-    'train_edge': '../datasets/LOL-v2/Real_captured/Train/Normal_edge_aug',
-    'test_image': '../datasets/LOL-v2/Real_captured/Test/Low_aug',
-    'test_edge': '../datasets/LOL-v2/Real_captured/Test/Normal_edge_aug'
-}
-
-
-def load_dataset(paths, transform, batch_size=32, num_workers=1):
-    train_dataset = EdgeDataset(paths['train_image'], paths['train_edge'], transform)
+def load_dataset(train_image_dir, train_edge_dir, transform, batch_size=32, num_workers=1):
+    train_dataset = EdgeDataset(train_image_dir, train_edge_dir, transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 
-    test_dataset = EdgeDataset(paths['test_image'], paths['test_edge'], transform)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    # test_dataset = EdgeDataset(paths['test_image'], paths['test_edge'], transform)
+    # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 
-    return train_loader, test_loader
+    # return train_loader, test_loader
+    return train_loader
 
 
-
-def train_model(model, criterion, optimizer, scheduler, train_loader, checkpoint_path, start_epochs=0, num_epochs=20):
+def train_model(model, criterion, criterion_bce, optimizer_G, optimizer_D, scheduler_G, scheduler_D, train_loader, checkpoint_path, start_epochs=0, num_epochs=20):
     model.train()
     train_losses = []
 
@@ -150,7 +110,7 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, checkpoint
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
-    loss_log_path = os.path.join(checkpoint_dir, 'EIN_wde_wBDCN_op.txt')
+    loss_log_path = os.path.join(checkpoint_dir, 'EIN.txt')
     if not os.path.exists(loss_log_path):
         with open(loss_log_path, mode='w') as loss_file:
             loss_file.write("Epoch\tloss\tEpoch Avg Loss\n") # 写入表头
@@ -159,33 +119,54 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, checkpoint
 
     for epoch in range(start_epochs, num_epochs):
         model.train()
-        epoch_loss = 0
+        epoch_loss_G = 0
+        epoch_loss_D = 0
         l_weight = [0.7, 0.7, 1.1, 1.1, 0.3, 0.3, 1.3] # new BDC loss
-        # l_weight = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.1]  # for bdcn ori loss
-        # l_weight = [[0.05, 2.], [0.05, 2.], [0.05, 2.],
-        #             [0.1, 1.], [0.1, 1.], [0.1, 1.],
-        #             [0.01, 4.]]  # for cats loss
         pbar = tqdm(train_loader, leave=True, desc=f"Epoch {epoch + 1}/{num_epochs}", ascii=True, ncols=100)
 
         for i, (image, edge, filename) in enumerate(pbar):
             image, edge = image.to(device), edge.to(device)
-            optimizer.zero_grad()
 
-            preds_list = model(image)
-            # loss = sum([criterion(preds, edge,l_w) for preds, l_w in zip(preds_list,l_weight)]) # bdcn_loss
-            fidelity_loss = sum([criterion(preds_list[-1], edge, l_weight[-1])])  # bdcn_loss
-            consistency_loss = criterion(preds_list[-1], edge)
-            loss = fidelity_loss + consistency_loss
-            # loss = sum([criterion(preds, edge, l_w, device) for preds, l_w in zip(preds_list, l_weight)])  # cats_loss
-            # loss = sum([criterion(preds_list[-1], edge, l_weight[-1], device)])  # cats_loss
-            # loss = sum([criterion(preds, labels) for preds in preds_list])  #HED loss, rcf_loss
+            # -------- 生成器前向 --------
+            preds_list = model.generator(image)
+            pred_final = preds_list[-1]
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            # -------- 判别器训练 --------
+            model.discriminator.train()
+            optimizer_D.zero_grad()
+            real_pair = edge
+            fake_pair = pred_final
 
-            pbar.set_postfix({"Loss": loss.item()})
-            epoch_loss += loss.item()
+            real_out = model.discriminator(real_pair)
+            fake_out = model.discriminator(fake_pair)
+
+            loss_d_real = criterion_bce(real_out, torch.ones_like(real_out))
+            loss_d_fake = criterion_bce(fake_out, torch.zeros_like(fake_out))
+            loss_D = 0.5 * (loss_d_real + loss_d_fake)
+            loss_D.backward()
+            optimizer_D.step()
+
+            # -------- 生成器训练 --------
+            model.generator.train()
+            optimizer_G.zero_grad()
+
+            fidelity_loss = criterion(preds_list[-1], edge, l_weight[-1])  # BDCN
+            consistency_loss = criterion(preds_list[-1], edge)  # optional
+            loss_bdcn = fidelity_loss + consistency_loss
+
+            fake_pair_for_G = torch.cat([pred_final, image], dim=1)
+            fake_out_g = model.discriminator(fake_pair_for_G)
+            loss_GAN = criterion_bce(fake_out_g, torch.ones_like(fake_out_g))
+
+            lambda_adv = 0.01
+            loss_G = loss_bdcn + lambda_adv * loss_GAN
+
+            loss_G.backward()
+            optimizer_G.step()
+
+            pbar.set_postfix({"G_Loss": loss_G.item(), "D_Loss": loss_D.item()})
+            epoch_loss_G += loss_G.item()
+            epoch_loss_D += loss_D.item()
 
         try:
             torch.save(model.state_dict(), checkpoint_path)
@@ -193,16 +174,18 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, checkpoint
         except Exception as e:
             print(f"模型保存失败: {e}")
 
-        scheduler.step()
-        epoch_loss /= len(train_loader)
-        train_losses.append(epoch_loss)
+        scheduler_G.step()
+        scheduler_D.step()
 
-        print(f"Epoch [{epoch + 1}/{num_epochs}], Train Loss: {epoch_loss:.4f}")
+        avg_loss_G = epoch_loss_G / len(train_loader)
+        avg_loss_D = epoch_loss_D / len(train_loader)
+        train_losses.append(avg_loss_G)
+
+        print(f"Epoch [{epoch + 1}/{num_epochs}], G_Loss: {avg_loss_G:.4f}, D_Loss: {avg_loss_D:.4f}")
 
         with open(loss_log_path, mode='a') as loss_file:
-            loss_file.write(f"{epoch + 1}\t{epoch_loss:.4f}\n")
+            loss_file.write(f"{epoch + 1}\t{avg_loss_G:.4f}\t{avg_loss_D:.4f}\t{avg_loss_G:.4f}\n")
 
-    # Record end time
     end_time = time.time()
     train_time = end_time - start_time
 
@@ -229,15 +212,19 @@ def main():
     num_workers = config['num_workers']
     start_epochs = config['start_epochs']
 
-    train_loader, test_loader = load_dataset(dataset_paths, transform, batch_size, num_workers)
-
+    # train_loader, test_loader = load_dataset(dataset_paths, transform, batch_size, num_workers)
+    train_loader = load_dataset(args.train_image, args.train_edge, transform, batch_size, num_workers)
     model = EIN().to(device)
 
     # Loss function and optimizer
     criterion = bdcn_loss2
-    optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-8)
+    criterion_bce = nn.BCELoss()
+
+    optimizer_G = optim.Adam(model.generator.parameters(), lr=1e-4, weight_decay=1e-8)
+    optimizer_D = optim.Adam(model.discriminator.parameters(), lr=1e-4, weight_decay=1e-8)
     # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10, 15], gamma=0.1)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=150)
+    scheduler_G = optim.lr_scheduler.CosineAnnealingLR(optimizer_G, T_max=150)
+    scheduler_D = optim.lr_scheduler.CosineAnnealingLR(optimizer_D, T_max=150)
 
     # Train the model
     checkpoint_path = args.checkpoint
@@ -245,8 +232,8 @@ def main():
         model.load_state_dict(torch.load(checkpoint_path))
         model.eval()
 
-    train_losses, train_time = train_model(model, criterion, optimizer, scheduler, train_loader,
-                                           checkpoint_path, start_epochs, num_epochs)
+    train_losses, train_time = train_model(model, criterion, criterion_bce, optimizer_G, optimizer_D, scheduler_G,
+                                           scheduler_D, train_loader, checkpoint_path, start_epochs, num_epochs)
 
     print("Finished Training")
 
