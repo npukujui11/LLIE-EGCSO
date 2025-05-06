@@ -78,7 +78,7 @@ def train(model, train_loader, criterion, optimizer, scheduler, checkpoint_path,
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
-    loss_log_path = os.path.join(checkpoint_dir, "EGCSO_oEGEM_wde_wLBP_wECA_wp.txt")
+    loss_log_path = os.path.join(checkpoint_dir, "EGCSO.txt")
     if not os.path.exists(loss_log_path):
         with open(loss_log_path, mode='w') as loss_file:
             loss_file.write("Epoch\tLoss\tEpoch Avg Loss\n")  # 写入表头
@@ -166,7 +166,7 @@ def main():
 
 
     # 训练模型
-    checkpoint_path = '../checkpoints/EGCSO/EGCSO_oEGEM_wde_wLBP_wECA_wp_ep2000.pth'
+    checkpoint_path = '../checkpoints/EGCSO/EGCSO_ep2000.pth'
     if os.path.exists(checkpoint_path):
         model.load_state_dict(torch.load(checkpoint_path))
         model.eval()
