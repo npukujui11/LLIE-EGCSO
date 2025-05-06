@@ -1,3 +1,26 @@
+## Introduction
+Low-light image enhancement is essential for downstream vision tasks such as surveillance, biometric recognition, and autonomous driving. However, challenges like low signal-to-noise ratio, weak local contrast, and color distortion make accurate restoration—especially in dark regions—difficult. Existing methods often use edge features as priors, but they underutilize edge information during feature fusion, leading to suboptimal results.
+
+This project proposes an edge-prior guided low-light enhancement framework that addresses both edge detail restoration and multi-objective optimization (brightness, noise, and color). Our key contributions include:
+
+* **Edge Inference Network (EIN)**: A GAN-based edge detector enhanced from DexiNed with a new Block0 module and lightweight attention to extract reliable edge maps under low-light conditions.
+
+* **Edge-Guided Enhancement**: A dual-branch enhancement network integrates edge priors with a color-aware module in HSV space for adaptive color correction and contrast enhancement.
+
+* **Performance**: Our model achieves state-of-the-art results on LOLv2 Synthetic **(PSNR 30.01, SSIM 0.951)** and shows strong generalization on high-resolution datasets like SICE and CID.
+
+This work provides a unified and effective solution for enhancing dark-region details and global image quality in low-light scenarios.
+
+## Network Architecture
+
+The overall network structure is shown in the figure below.
+
+![EGCSO](Global-Architecture-thumbnail.jpg)
+
+The structure of the dual-branch encoder-decoder network structure(DBED) is shown in Fig.
+
+![DBED](DBED.jpg)
+
 ## Directory
 
 The following is an explanation of the role of the files in the directory.
@@ -96,10 +119,13 @@ Similarly, you can install `requirements.yaml` files in Anaconda
 
 ## Dataset Preparation
 
+### Train Datasets
 Datasets including LOLv2, LSRW, SICE, SID, CID, and GladNet were used for model training in this method. You can download these data sets from the [BaiduDisk](https://pan.baidu.com/s/1QDH4-GFKRjEmVAN2_KpfXg?pwd=iigc). After downloading the dataset, put it under the `../datasets` directory.
 
+### Test Datasets
 DARK FACE, DICM, ExDark, LIME, LoLi-Phone, MEF, NPE, VV were used to benchmark our method to assess the generalizability of our proposed method. You can download these data sets from the [BaiduDisk](https://pan.baidu.com/s/1ITzofWswCAyM75byOb6X1w?pwd=vjky).
 
+### Edge Datasets
 Among them, we used the Canny operator to obtain the edge images of GT based on the LOL-v2 dataset, and constructed the edge dataset from this. The edge dataset we used for training can be downloaded on the [BaiduDisk](https://pan.baidu.com/s/1WgDtuscYxfGjJn2wOZaY2g?pwd=7vqd).
 
 ## Train
@@ -174,7 +200,7 @@ Also using `inference.py` can output the enhanced results, but compared to `pred
 
 ## Results
 
-Our visualization results on multiple datasets can be downloaded at [here]().
+Our visualization results on multiple datasets can be downloaded at [here](https://pan.baidu.com/s/1zTeVSTTJ3wlyR1YIPcTx-A?pwd=xg27).
 
 * The results of our full reference image quality assessment are shown in the figure. ![FR-IQA](FR-IQA.jpg)
 
