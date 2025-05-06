@@ -1,3 +1,7 @@
+## Directory
+
+The following is an explanation of the role of the files in the directory
+
 ```bash
 LLIE-EGCSO/
 ├── checkpoints/                   # 存放训练好的模型
@@ -63,4 +67,40 @@ LLIE-EGCSO/
     ├── predict_EGCSO.py           # EGCSO模型的预测代码
     ├── predict_EIN_result.py      # EIN模型的预测代码
     └── predict_EIN_show.py        # EIN模型的可视化代码
+```
+
+## Installation
+
+Clone this repo.
+```bash
+git clone https://github.com/npukujui11/LLIE-EGCSO.git
+cd LLIE-EGCSO/LLIE-EGCSO/
+```
+
+This code requires PyTorch 1.12 and python 3.9.x. Please install dependencies by
+```bash
+python==3.9.16
+torch==1.12.1+cu113
+cudatoolkit==11.3.1
+Pillow==9.4.0
+numpy==1.26.0
+timm==0.9.16
+thop==0.1.1
+pyyaml==6.0
+pyiqa==0.1.10
+lpips==0.1.4
+```
+
+Similarly, you can install `requirements.yaml` files in Anaconda
+
+## Dataset Preparation
+
+Datasets including LOLv2, LSRW, SICE, SID, CID, and GladNet were used for model training in this method. You can download these data sets from the [BaiduDisk](). After downloading the dataset, put it under the `../datasets` directory.
+
+DARK FACE, DICM, ExDark, LIME, LoLi-Phone, MEF, NPE, VV were used to benchmark our method to assess the generalizability of our proposed method. You can download these data sets from the [BaiduDisk]().
+
+## Train
+
+```bash
+python train.py --checkpoint "../checkpoints/EdgeNet/EIN.pth"
 ```
