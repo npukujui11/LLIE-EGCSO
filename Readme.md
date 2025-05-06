@@ -1,6 +1,6 @@
 ## Directory
 
-The following is an explanation of the role of the files in the directory
+The following is an explanation of the role of the files in the directory.
 
 ```bash
 LLIE-EGCSO/
@@ -59,6 +59,7 @@ LLIE-EGCSO/
 ├── train/                         # 训练代码
 │   ├── __init__.py                
 │   ├── config.json                # 配置文件
+│   ├── train_DexiNed              # DexiNed模型训练代码
 │   ├── train_EIN.py               # EIN模型训练代码
 │   └── train_EGCSO.py             # EGCSO模型训练代码
 └── predict/                       # 预测代码
@@ -99,8 +100,45 @@ Datasets including LOLv2, LSRW, SICE, SID, CID, and GladNet were used for model 
 
 DARK FACE, DICM, ExDark, LIME, LoLi-Phone, MEF, NPE, VV were used to benchmark our method to assess the generalizability of our proposed method. You can download these data sets from the [BaiduDisk](https://pan.baidu.com/s/1ITzofWswCAyM75byOb6X1w?pwd=vjky).
 
+Among them, we used the Canny operator to obtain the edge images of GT based on the LOL-v2 dataset, and constructed the edge dataset from this. The edge dataset we used for training can be downloaded on the [BaiduDisk](https://pan.baidu.com/s/1WgDtuscYxfGjJn2wOZaY2g?pwd=7vqd).
+
 ## Train
 
+### Train EIN
+Before training, you need to check whether the training parameters in the `config.json` meet the requirements.
+
+Download the edge dataset and put it into the executed file directory, and run the following code to train the EIN model.
+
 ```bash
-python train.py --checkpoint "../checkpoints/EdgeNet/EIN.pth"
+cd train
+python train_EIN.py --checkpoint "../checkpoints/EdgeNet/EIN.pth" --train_image "../datasets/LOL-v2/Real_captured/Train/Low" --train_edge "../datasets/LOL-v2/Real_captured/Train/Normal_edge"
 ```
+
+Run the following code to train the generator based on the improved DexiNed model.
+
+```bash
+cd train
+python train_DexiNed.py --checkpoint "../checkpoints/EdgeNet/DexiNed.pth" --train_image "../datasets/LOL-v2/Real_captured/Train/Low" --train_edge "../datasets/LOL-v2/Real_captured/Train/Normal_edge"
+```
+
+### Train DBED
+
+If you train a DBED network with LOL-v2 Real Captured, you must take the following steps first:
+1. Train the EIN model or the improved DexiNed model; 
+2. Use the trained weight file to reason about all the low-light images in the LOL-v2 Real Captured data set;
+3. Put the image of the inferred training data set in `../datasets/LOL-v2/Real_captured/Train/Normal_edge`;
+4. Put the image of the inferred test data set to `../datasets/LOL-v2/Real_captured/Test/Normal_edge`.
+
+> Tips: If you want to skip the EIN training step and quickly train the DBED code, you can put the GT images from the edge dataset built based on LOLv2 directly into the above directory, simply keeping the image name aligned. However, the results obtained by this final training are not the results presented by this method.
+
+You may need to manually modify the `dataset_paths`, `checkpoint_path`, `start_epochs` and `num_epochs` parameters in `train_EGCSO.py` before executing the following code, but by default.
+
+> If you bother, you can use the `argparse` library and set these parameters to command line arguments. On subsequent iterations I might introduce `argparse` in the code.
+
+```bash
+cd train
+python train_EGCSO.py
+```
+
+## Test
+
