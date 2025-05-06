@@ -143,38 +143,41 @@ python train_EGCSO.py
 ## Test
 ### Checkpoints
 
-目前EIN模型的训练权重已经丢失，后续会重新训练并上传。你可以自行训练EIN模型，并使用我们训练好的DBED模型权重进行测试。EGCSO模型的权重文件可以在[这里](https://pan.baidu.com/s/1aBvOehd2x9CTsz8MMm8iSQ?pwd=7e9f)下载。
+The training weight of the EIN model has been lost and will be retrained and uploaded later. You can train the EIN model by yourself and test it with our trained DBED model weights. The weight files of the EGCSO model can be downloaded [here](https://pan.baidu.com/s/1aBvOehd2x9CTsz8MMm8iSQ?pwd=7e9f).
 
-如果你想要获取EIN模型训练后的可视化结果，你可以运行下列代码。同样的，在运行之前你可能需要修改`image_paths`和`edge_paths`的路径，但通常情况下不需要。此外还需要修改`checkpoint_path`和`evaluate_model()`中的路径为你相应的路径。
+If you want to get the visual results of the EIN model after training, you can run the following code. Also you might need to modify the path of `image_paths` and `edge_paths` before running, but usually not required. You will also need to modify the path in `checkpoint_path` and `evaluate_model()` to your corresponding path.
 
 ```bash
 cd predict
 python predict_EIN_show.py
 ```
 
-运行上述代码之后，你可以看到可视化的图片结果。
+After running the above code, you can see the results of the visualization.
 
-如果你只是想要获取EIN模型训练后的结果，你可以运行下列代码来保存结果到相应的文件。在运行代码之前，你需要修改`evaluate_model()`中的路径为你相应的路径。
+If you just want to get the results of the EIN model after training, you can run the following code to save the results to the corresponding file. Before running the code you need to modify the path in `evaluate_model()` to your corresponding path.
 
 ```bash
 cd predict
 python predict_EIN_result.py
 ```
 
-如果你想要获取EGCSO模型训练后的可视化结果，修改`predict_EGCSO.py`中的`dataset_path`或`image_paths`的路径之后，你可以运行下列代码。但前提是你已经通过EIN模型获取了对应的边缘图像，并放在了上述在Train DBED中提到的路径下。
+If you want to get the visualization results after the EGCSO model training, after modifying the path of `dataset_path` or `image_paths` in `predict_EGCSO.py`, you can run the following code. But only if you have taken the corresponding edge image through the EIN model and put it under the path mentioned above in Train DBED.
+
 ```bash
 cd predict
 python predict_EGCSO.py --ckpt_path "your checkpoint path" --output_dir "your output path" --batch_size 1
 ```
-运行之后你可以在`your output path`中看到对应的结果。
 
-同样使用`inference.py`可以输出增强的结果，但是相比于`predict_EGCSO.py`，删除了可视化的部分。
+After running it, you can see the corresponding result in the `your output path`.
 
+Also using `inference.py` can output the enhanced results, but compared to `predict_EGCSO.py`, the part of the visualization is deleted.
 
-## Result
+## Results
 
-我们在多个数据集上的可视化结果可以在[这里]()下载。
+Our visualization results on multiple datasets can be downloaded at [here]().
 
-* 我们结果如下图所示![数据指标](Data-Results.jpg)
-* 在多个基准测试数据集上的可视化结果![可视化结果](Benchmark-Visual-Results.jpg)
+* The results of our full reference image quality assessment are shown in the figure. ![FR-IQA](FR-IQA.jpg)
 
+* The results of our non-reference image quality assessment are shown in Fig.![NR-IQA](NR-IQA.jpg)
+  
+* Visualization of the results on multiple benchmark datasets.![Visualization](Benchmark-Visual-Results.jpg)
