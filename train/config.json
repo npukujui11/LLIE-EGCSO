@@ -1,0 +1,1 @@
+{"start_epochs": 100, "num_epochs": 150, "batch_size": 40, "num_workers": 2, "avg_ssim": 0.5578713428974151, "avg_psnr": 17.132527389526366, "avg_lpips": 0.29687306672334673, "avg_loe": 0.29933599999999994, "avg_nima": 4.064836897850037}
