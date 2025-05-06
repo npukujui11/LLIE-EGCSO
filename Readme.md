@@ -1,4 +1,5 @@
 ## Introduction
+
 Low-light image enhancement is essential for downstream vision tasks such as surveillance, biometric recognition, and autonomous driving. However, challenges like low signal-to-noise ratio, weak local contrast, and color distortion make accurate restoration—especially in dark regions—difficult. Existing methods often use edge features as priors, but they underutilize edge information during feature fusion, leading to suboptimal results.
 
 This project proposes an edge-prior guided low-light enhancement framework that addresses both edge detail restoration and multi-objective optimization (brightness, noise, and color). Our key contributions include:
