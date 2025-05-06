@@ -175,6 +175,6 @@ python predict_EGCSO.py --ckpt_path "your checkpoint path" --output_dir "your ou
 
 我们在多个数据集上的可视化结果可以在[这里]()下载。
 
-* 我们结果如下图所示![数据指标](Data Results.jpg)
-* 在多个基准测试数据集上的可视化结果![可视化结果](Benchmark Visual Results.jpg)
+* 我们结果如下图所示![数据指标](Data-Results.jpg)
+* 在多个基准测试数据集上的可视化结果![可视化结果](Benchmark-Visual-Results.jpg)
 
