@@ -150,12 +150,12 @@ def train_model(model, criterion, criterion_bce, optimizer_G, optimizer_D, sched
             model.generator.train()
             optimizer_G.zero_grad()
 
-            fidelity_loss = criterion(preds_list[-1], edge, l_weight[-1])  # BDCN
+            # fidelity_loss = criterion(preds_list[-1], edge, l_weight[-1])  # BDCN
+            fidelity_loss = sum([criterion(preds, edge,l_w) for preds, l_w in zip(preds_list,l_weight)])
             consistency_loss = criterion(preds_list[-1], edge)  # optional
             loss_bdcn = fidelity_loss + consistency_loss
 
-            fake_pair_for_G = torch.cat([pred_final, image], dim=1)
-            fake_out_g = model.discriminator(fake_pair_for_G)
+            fake_out_g = model.discriminator(pred_final)
             loss_GAN = criterion_bce(fake_out_g, torch.ones_like(fake_out_g))
 
             lambda_adv = 0.01
@@ -169,7 +169,14 @@ def train_model(model, criterion, criterion_bce, optimizer_G, optimizer_D, sched
             epoch_loss_D += loss_D.item()
 
         try:
-            torch.save(model.state_dict(), checkpoint_path)
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_G_state_dict': optimizer_G.state_dict(),
+                'optimizer_D_state_dict': optimizer_D.state_dict(),
+                'scheduler_G_state_dict': scheduler_G.state_dict(),
+                'scheduler_D_state_dict': scheduler_D.state_dict()
+            }, checkpoint_path)
             print(f"模型成功保存到 {checkpoint_path}")
         except Exception as e:
             print(f"模型保存失败: {e}")
@@ -229,8 +236,13 @@ def main():
     # Train the model
     checkpoint_path = args.checkpoint
     if os.path.exists(checkpoint_path):
-        model.load_state_dict(torch.load(checkpoint_path))
-        model.eval()
+        checkpoint = torch.load(checkpoint_path)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer_G.load_state_dict(checkpoint['optimizer_G_state_dict'])
+        optimizer_D.load_state_dict(checkpoint['optimizer_D_state_dict'])
+        scheduler_G.load_state_dict(checkpoint['scheduler_G_state_dict'])
+        scheduler_D.load_state_dict(checkpoint['scheduler_D_state_dict'])
+        start_epochs = checkpoint['epoch'] + 1
 
     train_losses, train_time = train_model(model, criterion, criterion_bce, optimizer_G, optimizer_D, scheduler_G,
                                            scheduler_D, train_loader, checkpoint_path, start_epochs, num_epochs)
