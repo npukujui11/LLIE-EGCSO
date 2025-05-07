@@ -9,12 +9,8 @@
 import os
 import sys
 
-# 获取当前脚本的目录（model 文件夹）
-current_dir = os.path.dirname(os.path.abspath(__file__))
-# 获取上一级目录（D:\program\LLIE\DEN）
-parent_dir = os.path.abspath(os.path.join(current_dir, ".."))
 # 添加到 sys.path
-sys.path.append(parent_dir)
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")))
 
 import time
 import json
@@ -24,21 +20,19 @@ import matplotlib.pyplot as plt
 import cv2
 from PIL import Image
 from tqdm import tqdm
-from models.EIN import DexiNed
+from models.EIN import *
 from datasets.dataloader import *
 from torch.utils.data import DataLoader
 from models.ops.iqa import calculate_ods, calculate_ois, calculate_ap
 from torchvision.transforms import transforms
-os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Image Preprocessing
 transform = transforms.Compose([transforms.ToTensor()])
 
 dataset_paths = {
-    'train_image': '../datasets/LOL-v2/Real_captured/Train/Low',
-    'train_edge': '../datasets/LOL-v2/Real_captured/Train/Normal_edge',
     'test_image': '../datasets/LOL-v2/Real_captured/Test/Low',
     'test_edge': '../datasets/LOL-v2/Real_captured/Test/Normal_edge'
 }
@@ -53,12 +47,8 @@ dataset_paths = {
 """
 
 def load_dataset(paths, transform=None, batch_size=32, num_workers=1):
-    test_dataset = EdgeDataset(
-        paths['test_image'],
-        paths['test_edge'],
-        transform=transform)
+    test_dataset = EdgeDataset(paths['test_image'], paths['test_edge'], transform=transform)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-
     return test_loader
 
 def plot_predictions(images, predictions, targets, save_path=None):
@@ -68,6 +58,9 @@ def plot_predictions(images, predictions, targets, save_path=None):
         axes[i, 0].set_title('Input Image')
         axes[i, 0].axis('off')
 
+        pred_img = predictions[i].squeeze()
+        if pred_img.ndim == 3:
+            pred_img = pred_img[:, :, 0]
         axes[i, 1].imshow(predictions[i], cmap='gray')  # Predicted edge map
         axes[i, 1].set_title('Predicted Edges')
         axes[i, 1].axis('off')
@@ -77,12 +70,10 @@ def plot_predictions(images, predictions, targets, save_path=None):
         axes[i, 2].axis('off')
 
     plt.suptitle('Visualization Results', fontsize=25)
-
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path)
     plt.show()
-
 
 def save_edge_predictions(predictions, image_filenames, save_dir):
     """
@@ -101,21 +92,17 @@ def save_edge_predictions(predictions, image_filenames, save_dir):
         prediction_image.save(save_path)
         print(f"Saved prediction to {save_path}")
 
-
 def evaluate_model(model, test_loader, save_dir):
-    # Save directory
     os.makedirs(save_dir, exist_ok=True)
-
-    # Evaluation mode
     model.eval()
     total_duration = []
     pbar = tqdm(test_loader, desc="Evaluating", ascii=True, ncols=100)
+    predictions_all = []
+    gt_all = []
 
     with torch.no_grad():
         for i, (images, edge, file_names) in enumerate(pbar):
             images, edge = images.to(device), edge.to(device)
-
-            # Timing the inference
             start_time = time.perf_counter()
             outputs = model(images)
             if device.type == 'cuda':
@@ -123,29 +110,20 @@ def evaluate_model(model, test_loader, save_dir):
             duration = time.perf_counter() - start_time
             total_duration.append(duration)
 
-            # Save the last prediction as PNG
             prediction = torch.sigmoid(outputs[-1]).cpu().numpy()
-
-            # Convert to 8-bit image
             prediction = (prediction * 255).astype(np.uint8)
 
-            # Ensure the prediction is in the right shape
             if prediction.ndim == 3 and prediction.shape[0] == 1:
                 prediction = prediction[0]  # Remove the channel dimension if it is 1
             elif prediction.ndim == 4 and prediction.shape[1] == 1:
                 prediction = prediction[:, 0]  # Remove the channel dimension if it is 1
 
-            # Save each prediction image
             for j in range(prediction.shape[0]):
                 prediction_image = Image.fromarray(prediction[j])  # Assuming single channel
-
-                # Get the original file name without extension
                 original_name = os.path.splitext(file_names[j])[0]
-                # Create the prediction file name
                 save_path = os.path.join(save_dir, f"{original_name}.png")
                 prediction_image.save(save_path)
 
-            # Save the predictions and ground truth
             predictions = [torch.sigmoid(output).cpu().numpy() for output in outputs]
             gt = edge.cpu().numpy()
 
@@ -157,22 +135,20 @@ def evaluate_model(model, test_loader, save_dir):
 
 
 def main():
-    # Data Loader
     test_loader = load_dataset(dataset_paths, transform, batch_size=16, num_workers=1)
-
-    # Load Model
-    model = DexiNed().to(device)
-
+    model = EIN().to(device)
     checkpoint_path = '../checkpoints/EdgeNet/EIN_wde_wBDCN_op.pth'
     if os.path.exists(checkpoint_path):
         print(f"Restoring weights from: {checkpoint_path}")
-        model.load_state_dict(torch.load(checkpoint_path))
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        model.load_state_dict(checkpoint['model_state_dict'])
         model.eval()
+        generator = model.generator  # 之后用于推理
     else:
         raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
 
-    total_duration, ods_score, ois_score, ap_score = evaluate_model(model, test_loader,
-                                                                    '../datasets/LOL-v2/Real_captured/Test/predictions')
+    save_dir = '../datasets/LOL-v2/Real_captured/Test/predictions'
+    total_duration, ods_score, ois_score, ap_score = evaluate_model(generator, test_loader, save_dir)
 
     # Print evaluation metrics
     print(f"Test ODS: {ods_score:.4f}, Test OIS: {ois_score:.4f}, Test AP: {ap_score:.4f}, "
@@ -211,10 +187,9 @@ def main():
     """
 
     images, edges, predictions = [], [], []
-
     with torch.no_grad():
         for img_path, edge_path in zip(image_paths, edge_paths):
-            image = Image.open(img_path)
+            image = Image.open(img_path).convert('RGB')
             edge = Image.open(edge_path)
 
             images.append(image)
@@ -227,7 +202,6 @@ def main():
             predictions.append(prediction)
 
     plot_predictions(images, predictions, edges)
-
 
 if __name__ == '__main__':
     main()
