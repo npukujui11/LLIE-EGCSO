@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.optim as optim
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
-from models.EGCSO_oEGEM import EGCSO
+from models.EGCSO import EGCSO
 from torchvision.transforms import transforms, RandomCrop, RandomHorizontalFlip, RandomVerticalFlip
 from tqdm import tqdm
 from models.loss.lossfunction import *
@@ -96,7 +96,11 @@ def train(model, train_loader, criterion, optimizer, scheduler, checkpoint_path,
             output_hvi = model.HVIT(output, edge)
             normal_hvi = model.HVIT(normal, edge)
 
-
+            ######################################
+            # 1.
+            # If you do not want to use PERCEPTUAL LOSS (P_loss)
+            # comment the following code
+            ######################################
             L1_loss = L1Loss(loss_weight=0, reduction='mean').to(device)
             D_loss = SSIM(weight=0).to(device)
             E_loss = EdgeLoss(loss_weight=0).to(device)
@@ -108,8 +112,10 @@ def train(model, train_loader, criterion, optimizer, scheduler, checkpoint_path,
             loss_rgb = (L1_loss(output, normal) + D_loss(output, normal) +
                             E_loss(output, normal) + 1.0 * P_loss(output, normal)[0])
             loss = loss_rgb + 1.0 * loss_hvi
-
-            # 计算损失
+            ######################################
+            # 2.
+            # Uncomment the following line
+            ######################################
             # loss = criterion(output, normal) + 1.0 * criterion(output_hvi, normal_hvi)
             epoch_loss += loss.item()
 
@@ -135,13 +141,13 @@ def train(model, train_loader, criterion, optimizer, scheduler, checkpoint_path,
 
 
 dataset_paths = {
-    'train_image': '../datasets/LOL-v2/Synthetic/Train/Low',
-    'train_normal': '../datasets/LOL-v2/Synthetic/Train/Normal',
-    'train_edge': '../datasets/LOL-v2/Synthetic/Train/Normal_edge',
+    'train_image': '../datasets/LOLv2/Synthetic/Train/Low',
+    'train_normal': '../datasets/LOLv2/Synthetic/Train/Normal',
+    'train_edge': '../datasets/LOLv2/Synthetic/Train/Normal_edge',
 
-    'test_image': '../datasets/LOL-v2/Synthetic/Test/Low',
-    'test_normal': '../datasets/LOL-v2/Synthetic/Test/Normal',
-    'test_edge': '../datasets/LOL-v2/Synthetic/Test/Normal_edge'
+    'test_image': '../datasets/LOLv2/Synthetic/Test/Low',
+    'test_normal': '../datasets/LOLv2/Synthetic/Test/Normal',
+    'test_edge': '../datasets/LOLv2/Synthetic/Test/Normal_edge'
 }
 
 
