@@ -170,7 +170,7 @@ python train_EGCSO.py
 ## Test
 ### Checkpoints
 
-The training weight of the **EIN** model has been lost and will be retrained and uploaded later. You can train the EIN model by yourself and test it with our trained DBED model weights. The weight files of the EGCSO model can be downloaded [here](https://pan.baidu.com/s/1aBvOehd2x9CTsz8MMm8iSQ?pwd=7e9f).
+The training weight of the **EIN** model has been lost and will be retrained and uploaded later. You can train the EIN model by yourself and test it with our trained DBED model weights. The weight files of the EGCSO model can be downloaded [here](https://pan.baidu.com/s/1jhtNSIJfYX8HMo2XOI6wJg?pwd=wzki).
 
 If you want to get the visual results of the **improved DexiNed model**, you can run the following code. Also you may need to modify the path of `image_paths` and `edge_paths` before running but usually not required. Also you need to modify the path in `checkpoint_path` and `evaluate_model()` to your corresponding path.
 
